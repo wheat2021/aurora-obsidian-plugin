@@ -1,6 +1,9 @@
 import esbuild from "esbuild";
 import process from "process";
 import builtins from "builtin-modules";
+import path from "path";
+import { fileURLToPath } from "url";
+import fs from "fs";
 
 const banner =
 `/*
@@ -10,6 +13,43 @@ if you want to view the source, please visit the github repository of this plugi
 `;
 
 const prod = (process.argv[2] === "production");
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+// Path alias plugin for esbuild
+const aliasPlugin = {
+	name: 'alias',
+	setup(build) {
+		build.onResolve({ filter: /^@\// }, args => {
+			const relativePath = args.path.slice(2); // Remove '@/'
+			let resolvedPath = path.resolve(__dirname, 'src', relativePath);
+			
+			// Check if path exists and handle directory index files
+			if (fs.existsSync(resolvedPath)) {
+				const stats = fs.statSync(resolvedPath);
+				if (stats.isDirectory()) {
+					// Try index.ts, then index.js
+					const indexTs = path.join(resolvedPath, 'index.ts');
+					const indexJs = path.join(resolvedPath, 'index.js');
+					if (fs.existsSync(indexTs)) {
+						resolvedPath = indexTs;
+					} else if (fs.existsSync(indexJs)) {
+						resolvedPath = indexJs;
+					}
+				}
+			} else {
+				// Try adding .ts or .js extension
+				if (fs.existsSync(resolvedPath + '.ts')) {
+					resolvedPath = resolvedPath + '.ts';
+				} else if (fs.existsSync(resolvedPath + '.js')) {
+					resolvedPath = resolvedPath + '.js';
+				}
+			}
+			
+			return { path: resolvedPath };
+		});
+	}
+};
 
 const context = await esbuild.context({
 	banner: {
@@ -39,6 +79,7 @@ const context = await esbuild.context({
 	treeShaking: true,
 	outfile: "main.js",
 	minify: prod,
+	plugins: [aliasPlugin],
 });
 
 if (prod) {
