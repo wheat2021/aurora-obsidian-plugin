@@ -4,6 +4,7 @@ import { openSampleModal } from '@/commands/sampleModal';
 import { sampleEditorCommand } from '@/commands/editorCommands';
 import { replaceNoteFromClipboard } from '@/commands/replaceFromClipboard';
 import { reloadPlugin } from '@/commands/reloadPlugin';
+import { upgradeHeadings, downgradeHeadings } from '@/commands/headingLevel';
 
 export function registerCommands(plugin: Plugin): void {
 	// Simple modal command
@@ -77,6 +78,24 @@ export function registerCommands(plugin: Plugin): void {
 		name: 'Reload plugin',
 		callback: async () => {
 			await reloadPlugin(plugin.app, plugin);
+		}
+	});
+
+	// Upgrade headings (H2->H1, H3->H2, etc., H1 stays H1)
+	plugin.addCommand({
+		id: 'upgrade-headings',
+		name: 'Upgrade heading levels',
+		editorCallback: (editor, _view) => {
+			upgradeHeadings(editor);
+		}
+	});
+
+	// Downgrade headings (H1->H2, H2->H3, etc., max H6)
+	plugin.addCommand({
+		id: 'downgrade-headings',
+		name: 'Downgrade heading levels',
+		editorCallback: (editor, _view) => {
+			downgradeHeadings(editor);
 		}
 	});
 }
